@@ -1,0 +1,6 @@
+{
+  "name": "Noerae Resistor",
+  "description": "Kalkulator warna resistor lengkap dengan penyesuaian daya Watt, voltase, dan mode toleransi praktis.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
