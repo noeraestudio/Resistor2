@@ -109,6 +109,29 @@ class ResistorViewModel(application: Application) : AndroidViewModel(application
         initialValue = ResistorCalculator.convertValueToBands(4700.0, 5.0, 4)
     )
 
+    fun setResistanceDirectly(ohms: Double, tolerance: Double? = null) {
+        val tol = tolerance ?: calculationResult.value.tolerancePercent
+        val newBands = ResistorCalculator.convertValueToBands(
+            targetResistanceOhms = ohms,
+            tolerancePercent = tol,
+            bandCount = _bandCount.value
+        )
+        if (newBands != null) {
+            _selectedBands.value = newBands
+        }
+    }
+
+    fun applyResistanceString(input: String, tolerance: Double? = null): Boolean {
+        val ohms = parseResistorInputToOhms(input) ?: return false
+        if (ohms <= 0) return false
+        setResistanceDirectly(ohms, tolerance)
+        return true
+    }
+
+    fun parseInputOhms(input: String): Double? {
+        return parseResistorInputToOhms(input)
+    }
+
     fun setBandCount(count: Int) {
         if (_bandCount.value == count) return
         _bandCount.value = count

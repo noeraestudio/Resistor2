@@ -5,6 +5,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,17 +18,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ElectricBolt
 import androidx.compose.material.icons.filled.FlashOn
+import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -37,6 +42,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -53,6 +59,7 @@ import com.example.ui.ResistorViewModel
 import com.example.ui.components.BandColorBottomSheet
 import com.example.ui.components.CompactBandTilesRow
 import com.example.ui.components.ResistorGraphic
+import com.example.util.ResistorCalculator
 
 @Composable
 fun ColorCodeCalculatorScreen(
@@ -68,6 +75,10 @@ fun ColorCodeCalculatorScreen(
     var activeBandIndexForSheet by remember { mutableStateOf<Int?>(null) }
     var showSaveDialog by remember { mutableStateOf(false) }
     var showWattageDialog by remember { mutableStateOf(false) }
+    var showEditResistanceDialog by remember { mutableStateOf(false) }
+    var editResistanceInput by remember { mutableStateOf("") }
+    var editToleranceSelected by remember { mutableDoubleStateOf(5.0) }
+
     var saveTitleInput by remember { mutableStateOf("") }
     var saveNotesInput by remember { mutableStateOf("") }
     var saveSuccessMessage by remember { mutableStateOf(false) }
@@ -82,9 +93,21 @@ fun ColorCodeCalculatorScreen(
     ) {
         // === FIXED / STICKY TOP HEADER: RESISTANCE VALUE & RESISTOR GRAPHIC ===
 
-        // 1. Nilai Resistansi Card (Placed ABOVE Resistor Graphic)
+        // 1. Nilai Resistansi Card (Clickable to Edit Value Directly)
         Card(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(18.dp))
+                .clickable {
+                    editResistanceInput = ResistorCalculator.formatResistance(calculationResult.resistanceOhms)
+                        .replace(" Ω", "")
+                        .replace(" kΩ", "k")
+                        .replace(" MΩ", "M")
+                        .replace(" GΩ", "G")
+                    editToleranceSelected = calculationResult.tolerancePercent
+                    showEditResistanceDialog = true
+                }
+                .testTag("resistance_value_card"),
             shape = RoundedCornerShape(18.dp),
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.primaryContainer
@@ -101,13 +124,24 @@ fun ColorCodeCalculatorScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "NILAI RESISTANSI",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f),
-                        letterSpacing = 1.2.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = "NILAI RESISTANSI",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f),
+                            letterSpacing = 1.2.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Icon(
+                            Icons.Default.Edit,
+                            contentDescription = "Edit Nilai",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(12.dp)
+                        )
+                    }
 
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -185,7 +219,7 @@ fun ColorCodeCalculatorScreen(
 
                 Spacer(modifier = Modifier.height(2.dp))
 
-                // Big Resistance Value
+                // Big Resistance Value (Clickable)
                 Text(
                     text = calculationResult.formattedResistance,
                     style = MaterialTheme.typography.headlineLarge,
@@ -195,7 +229,26 @@ fun ColorCodeCalculatorScreen(
                     modifier = Modifier.testTag("result_resistance_text")
                 )
 
-                Spacer(modifier = Modifier.height(2.dp))
+                // Tap to edit prompt hint
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        Icons.Default.TouchApp,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                        modifier = Modifier.size(12.dp)
+                    )
+                    Text(
+                        text = "Ketuk untuk isi nilai langsung (mis. 4.7k, 220, 1M)",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                        fontSize = 10.sp
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
 
                 // Tolerance & Temperature PPM badge
                 Row(
@@ -306,6 +359,180 @@ fun ColorCodeCalculatorScreen(
             },
             onDismissRequest = {
                 activeBandIndexForSheet = null
+            }
+        )
+    }
+
+    // Direct Resistance Input Dialog (Bidirectional: enter value -> updates colors)
+    if (showEditResistanceDialog) {
+        val parsedOhms = remember(editResistanceInput) {
+            viewModel.parseInputOhms(editResistanceInput)
+        }
+        val previewBands = remember(parsedOhms, editToleranceSelected, bandCount) {
+            if (parsedOhms != null && parsedOhms > 0) {
+                ResistorCalculator.convertValueToBands(
+                    targetResistanceOhms = parsedOhms,
+                    tolerancePercent = editToleranceSelected,
+                    bandCount = bandCount
+                )
+            } else null
+        }
+
+        AlertDialog(
+            onDismissRequest = { showEditResistanceDialog = false },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.Edit,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Isi Nilai Resistansi",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = "Ketik nilai resistor (mis. 4.7k, 220, 1M, 4k7, 100) untuk mengubah warna gelang resistor secara otomatis:",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    OutlinedTextField(
+                        value = editResistanceInput,
+                        onValueChange = { editResistanceInput = it },
+                        label = { Text("Nilai Resistansi (Ω / k / M)") },
+                        placeholder = { Text("contoh: 4.7k, 220, 1M, 4700") },
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("direct_resistance_input_field")
+                    )
+
+                    // Quick Presets
+                    Text(
+                        text = "Pilihan Nilai Cepat:",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf("100", "220", "330", "470", "1k", "2.2k", "4.7k", "10k", "47k", "100k", "1M").forEach { preset ->
+                            FilterChip(
+                                selected = editResistanceInput == preset,
+                                onClick = { editResistanceInput = preset },
+                                label = { Text(preset, fontSize = 11.sp) }
+                            )
+                        }
+                    }
+
+                    // Tolerance Selector Chips
+                    Text(
+                        text = "Pilih Toleransi:",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf(
+                            1.0 to "±1% (Cokelat)",
+                            2.0 to "±2% (Merah)",
+                            5.0 to "±5% (Emas)",
+                            10.0 to "±10% (Perak)"
+                        ).forEach { (tol, label) ->
+                            FilterChip(
+                                selected = editToleranceSelected == tol,
+                                onClick = { editToleranceSelected = tol },
+                                label = { Text(label, fontSize = 11.sp) }
+                            )
+                        }
+                    }
+
+                    // Live preview of resulting bands if valid
+                    if (previewBands != null && parsedOhms != null) {
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(8.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = "Preview: ${ResistorCalculator.formatResistance(parsedOhms)} (±$editToleranceSelected%)",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    previewBands.forEach { c ->
+                                        Box(
+                                            modifier = Modifier
+                                                .size(width = 16.dp, height = 24.dp)
+                                                .clip(RoundedCornerShape(3.dp))
+                                                .border(0.5.dp, Color.Gray.copy(alpha = 0.5f), RoundedCornerShape(3.dp)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Surface(
+                                                modifier = Modifier.fillMaxSize(),
+                                                color = c.composeColor
+                                            ) {}
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } else if (editResistanceInput.isNotBlank()) {
+                        Text(
+                            text = "Format tidak valid. Contoh format: 4.7k, 220, 1M, 4700, 4r7",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontSize = 11.sp
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (parsedOhms != null && parsedOhms > 0) {
+                            viewModel.setResistanceDirectly(parsedOhms, editToleranceSelected)
+                            showEditResistanceDialog = false
+                        }
+                    },
+                    enabled = parsedOhms != null && parsedOhms > 0,
+                    modifier = Modifier.testTag("apply_resistance_button")
+                ) {
+                    Text("Terapkan")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEditResistanceDialog = false }) {
+                    Text("Batal")
+                }
             }
         )
     }

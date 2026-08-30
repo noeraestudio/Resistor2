@@ -7,11 +7,10 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.ElectricBolt
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.TableChart
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -27,6 +26,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -36,15 +37,15 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.ui.ResistorViewModel
 import com.example.ui.screens.ColorCodeCalculatorScreen
+import com.example.ui.screens.ColorTableScreen
 import com.example.ui.screens.HistoryScreen
-import com.example.ui.screens.InverseCalculatorScreen
 import com.example.ui.screens.PowerVoltageCalculatorScreen
 import com.example.ui.theme.MyApplicationTheme
 
 sealed class Screen(val route: String, val title: String, val icon: ImageVector) {
-    object ColorCode : Screen("color_code", "Kode Warna", Icons.Default.Palette)
-    object PowerVoltage : Screen("power_voltage", "Volt & Watt", Icons.Default.ElectricBolt)
-    object Inverse : Screen("inverse", "Mode Praktis", Icons.Default.AutoAwesome)
+    object ColorCode : Screen("color_code", "Code", Icons.Default.Palette)
+    object PowerVoltage : Screen("power_voltage", "Watt & Volt", Icons.Default.ElectricBolt)
+    object ColorTable : Screen("color_table", "Tabel", Icons.Default.TableChart)
     object History : Screen("history", "Riwayat", Icons.Default.History)
 }
 
@@ -53,6 +54,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
+            // Respects system device dark/light theme setting dynamically
             MyApplicationTheme {
                 MainAppScreen()
             }
@@ -76,17 +78,12 @@ fun MainAppScreen(
     val customVoltageInput by resistorViewModel.customVoltageInput.collectAsStateWithLifecycle()
     val wattageRating by resistorViewModel.wattageRating.collectAsStateWithLifecycle()
 
-    val inverseInput by resistorViewModel.inverseInputValue.collectAsStateWithLifecycle()
-    val inverseTolerance by resistorViewModel.inverseTolerance.collectAsStateWithLifecycle()
-    val inverseBandCount by resistorViewModel.inverseBandCount.collectAsStateWithLifecycle()
-    val inverseBandsResult by resistorViewModel.inverseBandsResult.collectAsStateWithLifecycle()
-
     val savedResistors by resistorViewModel.savedResistors.collectAsStateWithLifecycle()
 
     val screens = listOf(
         Screen.ColorCode,
         Screen.PowerVoltage,
-        Screen.Inverse,
+        Screen.ColorTable,
         Screen.History
     )
 
@@ -98,12 +95,14 @@ fun MainAppScreen(
                     Text(
                         text = when (currentRoute) {
                             Screen.ColorCode.route -> "Noerae Resistor"
-                            Screen.PowerVoltage.route -> "Daya & Voltase Resistor"
-                            Screen.Inverse.route -> "Mode Praktis (Nilai ke Warna)"
+                            Screen.PowerVoltage.route -> "Watt & Volt Resistor"
+                            Screen.ColorTable.route -> "Tabel Kode Warna"
                             Screen.History.route -> "Riwayat Resistor"
                             else -> "Noerae Resistor"
                         },
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -129,7 +128,17 @@ fun MainAppScreen(
                             }
                         },
                         icon = { Icon(screen.icon, contentDescription = screen.title) },
-                        label = { Text(screen.title) },
+                        label = {
+                            Text(
+                                text = screen.title,
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = TextOverflow.Ellipsis,
+                                fontSize = 11.sp,
+                                fontWeight = if (currentRoute == screen.route) FontWeight.Bold else FontWeight.Normal
+                            )
+                        },
+                        alwaysShowLabel = true,
                         modifier = Modifier.testTag("nav_${screen.route}")
                     )
                 }
@@ -171,14 +180,8 @@ fun MainAppScreen(
                 )
             }
 
-            composable(Screen.Inverse.route) {
-                InverseCalculatorScreen(
-                    viewModel = resistorViewModel,
-                    inverseInput = inverseInput,
-                    inverseTolerance = inverseTolerance,
-                    inverseBandCount = inverseBandCount,
-                    resultBands = inverseBandsResult
-                )
+            composable(Screen.ColorTable.route) {
+                ColorTableScreen()
             }
 
             composable(Screen.History.route) {
